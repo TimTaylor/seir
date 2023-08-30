@@ -47,23 +47,39 @@ gamma <- 1/7
 time_end <- 600
 increment <- 1
 
+# vaccination
+vac_start <- c(0, 200, 0)
+vac_end <- c(0, 300, 0)
+nu <- c(0, 0.1, 0)
+
 # R implementation
-out_r <- seir_r(alpha, beta, gamma, contact_matrix, demography, init, time_end)
+out_r <- seir_r(
+    alpha, beta, gamma,
+    contact_matrix, demography,
+    init, time_end, 
+    vac_start, vac_end, nu
+)
 
 # C implementation
-out_c <- seir_c(alpha, beta, gamma, contact_matrix, demography, init, time_end)
+out_c <- seir_c(
+    alpha, beta, gamma,
+    contact_matrix, demography,
+    init, time_end,
+    vac_start, vac_end, nu
+)
 
 # compare outputs
-infective_index <- (2*n + 2):(3*n + 1)
+recovered_index <- (3*n + 2):(4*n + 1)
 layout(matrix(c(1,2,3,3), ncol=2, byrow=TRUE), heights=c(4, 1))
 op <- par(mai=rep(0.5, 4))
-matplot(out_r[,infective_index], ylab = "", xlab = "", type = "l", main = "R")
-matplot(out_c[,infective_index], ylab = "", xlab = "", type = "l", main = "C")
+matplot(out_r[, recovered_index], ylab = "", xlab = "", type = "l", main = "R ODE")
+matplot(out_c[, recovered_index], ylab = "", xlab = "", type = "l", main = "C ODE")
 par(mai=c(0,0,0,0))
 plot.new()
 legend(
-    title = "age category",
-    x="center", ncol=n, legend=rownames(contact_matrix), fill = seq_len(n)
+    title = "age category", x="center",
+    legend=rownames(contact_matrix),
+    ncol=n, col = seq_len(n), lty = seq_len(n)
 )
 ```
 
@@ -72,11 +88,21 @@ legend(
 ``` r
 par(op)
 microbenchmark::microbenchmark(
-    R = seir_r(alpha, beta, gamma, contact_matrix, demography, init, time_end),
-    C = seir_c(alpha, beta, gamma, contact_matrix, demography, init, time_end)
+    R = seir_r(
+        alpha, beta, gamma,
+        contact_matrix, demography,
+        init, time_end,
+        vac_start, vac_end, nu
+    ),
+    C = seir_c(
+        alpha, beta, gamma,
+        contact_matrix, demography,
+        init, time_end,
+        vac_start, vac_end, nu
+    )
 )
 #> Unit: microseconds
-#>  expr      min        lq       mean     median         uq       max neval cld
-#>     R 9799.274 10117.782 10732.0709 10199.3280 10433.3535 16997.538   100  a 
-#>     C  741.053   794.137   867.8647   859.2965   938.5335  1173.579   100   b
+#>  expr       min        lq       mean    median         uq       max neval cld
+#>     R 13435.144 13864.501 14521.9634 13977.051 14184.4135 21155.639   100  a 
+#>     C   783.761   850.928   954.6386   907.135   999.0805  4002.192   100   b
 ```

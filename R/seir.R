@@ -11,6 +11,9 @@ seir_c <- function(
     demography_vector,
     initial_conditions,
     time_end,
+    vac_start_times = NULL,
+    vac_end_times = NULL,
+    nu = NULL,
     increment = 1
 ) {
     # set the max number of parameters:
@@ -27,8 +30,12 @@ seir_c <- function(
     # scale the initial conditions to the population level and convert to vector
     init <- c(initial_conditions * demography_vector)
 
+    # handle no vaccination
+    if (is.null(vac_start_times) || is.null(vac_end_times) || is.null(nu))
+        vac_start_times <- vac_end_times <- nu <- rep.int(0, nrow(contact_matrix))
+
     # bundle the parameters in to a vector
-    p <- c(n, alpha, beta, gamma, mat)
+    p <- c(n, alpha, beta, gamma, vac_start_times, vac_end_times, nu, mat)
 
     # check the length of parameters
     if (length(p) > MAX)
@@ -54,8 +61,12 @@ seir_r <- function(
     demography_vector,
     initial_conditions,
     time_end,
+    vac_start_times = NULL,
+    vac_end_times = NULL,
+    nu = NULL,
     increment = 1
 ) {
+
     # scale the contact matrix
     mat <- contact_matrix / max(Re(eigen(contact_matrix)$values))
     mat <- mat / demography_vector
@@ -65,6 +76,10 @@ seir_r <- function(
 
     # scale the initial conditions to the population level and convert to vector
     init <- c(initial_conditions * demography_vector)
+
+    # handle no vaccination
+    if (is.null(vac_start_times) || is.null(vac_end_times) || is.null(nu))
+        vac_start_times <- vac_end_times <- nu <- rep.int(0, nrow(contact_matrix))
 
     # pull out the indices that will be used for the odes
     s_index <- 1:n
@@ -79,11 +94,13 @@ seir_r <- function(
         E <- y[e_index]
         I <- y[i_index]
 
+        idx <- vac_start_times <= t & t < vac_end_times
+        StoV <- nu * idx * S
         StoE <- beta * S * mat %*% I
         EtoI <- alpha * E
         ItoR <- gamma * I
 
-        dS <- -StoE
+        dS <- -StoE - StoV
         dE <- StoE - EtoI
         dI <- EtoI - ItoR
         dR <- ItoR

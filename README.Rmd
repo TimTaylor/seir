@@ -58,27 +58,53 @@ gamma <- 1/7
 time_end <- 600
 increment <- 1
 
+# vaccination
+vac_start <- c(0, 200, 0)
+vac_end <- c(0, 300, 0)
+nu <- c(0, 0.1, 0)
+
 # R implementation
-out_r <- seir_r(alpha, beta, gamma, contact_matrix, demography, init, time_end)
+out_r <- seir_r(
+    alpha, beta, gamma,
+    contact_matrix, demography,
+    init, time_end, 
+    vac_start, vac_end, nu
+)
 
 # C implementation
-out_c <- seir_c(alpha, beta, gamma, contact_matrix, demography, init, time_end)
+out_c <- seir_c(
+    alpha, beta, gamma,
+    contact_matrix, demography,
+    init, time_end,
+    vac_start, vac_end, nu
+)
 
 # compare outputs
-infective_index <- (2*n + 2):(3*n + 1)
+recovered_index <- (3*n + 2):(4*n + 1)
 layout(matrix(c(1,2,3,3), ncol=2, byrow=TRUE), heights=c(4, 1))
 op <- par(mai=rep(0.5, 4))
-matplot(out_r[,infective_index], ylab = "", xlab = "", type = "l", main = "R")
-matplot(out_c[,infective_index], ylab = "", xlab = "", type = "l", main = "C")
+matplot(out_r[, recovered_index], ylab = "", xlab = "", type = "l", main = "R ODE")
+matplot(out_c[, recovered_index], ylab = "", xlab = "", type = "l", main = "C ODE")
 par(mai=c(0,0,0,0))
 plot.new()
 legend(
-    title = "age category",
-    x="center", ncol=n, legend=rownames(contact_matrix), fill = seq_len(n)
+    title = "age category", x="center",
+    legend=rownames(contact_matrix),
+    ncol=n, col = seq_len(n), lty = seq_len(n)
 )
 par(op)
 microbenchmark::microbenchmark(
-    R = seir_r(alpha, beta, gamma, contact_matrix, demography, init, time_end),
-    C = seir_c(alpha, beta, gamma, contact_matrix, demography, init, time_end)
+    R = seir_r(
+        alpha, beta, gamma,
+        contact_matrix, demography,
+        init, time_end,
+        vac_start, vac_end, nu
+    ),
+    C = seir_c(
+        alpha, beta, gamma,
+        contact_matrix, demography,
+        init, time_end,
+        vac_start, vac_end, nu
+    )
 )
 ```
