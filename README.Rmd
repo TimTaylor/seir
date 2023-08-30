@@ -21,8 +21,9 @@ knitr::opts_chunk$set(
 
 Note, at present, the implementations assumes:
 
-- a closed population (no births, deaths or ageing)
-- no time dependent parameters or interventions.
+- a closed population (no births, deaths or ageing);
+- single (age-dependent) vaccination;
+- no other time dependent parameters or interventions.
 
 ```{r example}
 library(seir)

@@ -10,8 +10,9 @@
 
 Note, at present, the implementations assumes:
 
-- a closed population (no births, deaths or ageing)
-- no time dependent parameters or interventions.
+- a closed population (no births, deaths or ageing);
+- single (age-dependent) vaccination;
+- no other time dependent parameters or interventions.
 
 ``` r
 library(seir)
@@ -102,7 +103,7 @@ microbenchmark::microbenchmark(
     )
 )
 #> Unit: microseconds
-#>  expr       min        lq       mean    median         uq       max neval cld
-#>     R 13435.144 13864.501 14521.9634 13977.051 14184.4135 21155.639   100  a 
-#>     C   783.761   850.928   954.6386   907.135   999.0805  4002.192   100   b
+#>  expr       min         lq      mean    median        uq      max neval cld
+#>     R 13734.652 14114.6810 15279.602 14281.810 15853.426 27796.40   100  a 
+#>     C   795.317   902.4215  1042.418   976.403  1069.089  2979.69   100   b
 ```
