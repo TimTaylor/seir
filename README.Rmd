@@ -1,0 +1,84 @@
+---
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-"
+)
+```
+
+# Exploration of deSolve with compiled code
+
+<!-- badges: start -->
+<!-- badges: end -->
+
+## Example
+
+Note, at present, the implementations assumes:
+
+- a closed population (no births, deaths or ageing)
+- no time dependent parameters or interventions.
+
+```{r example}
+library(seir)
+
+# demography
+contact_data <- suppressMessages(
+    socialmixr::contact_matrix(
+        socialmixr::polymod,
+        countries = "United Kingdom",
+        age.limits = c(0,20,65),
+        symmetric = TRUE
+    )
+)
+
+contact_matrix <- t(contact_data$matrix)
+demography <- contact_data$demography$population
+n <- nrow(contact_matrix)
+
+# initial conditions
+init <- matrix(
+    c(S = 0.999999, E = 0, I = 0.000001, R = 0),
+    nrow = n,
+    ncol = 4L,
+    byrow = TRUE
+)
+
+# epi parameters
+alpha <- 1/3
+beta <- 1.5/7
+gamma <- 1/7
+
+# time stuff
+time_end <- 600
+increment <- 1
+
+# R implementation
+out_r <- seir_r(alpha, beta, gamma, contact_matrix, demography, init, time_end)
+
+# C implementation
+out_c <- seir_c(alpha, beta, gamma, contact_matrix, demography, init, time_end)
+
+# compare outputs
+infective_index <- (2*n + 2):(3*n + 1)
+layout(matrix(c(1,2,3,3), ncol=2, byrow=TRUE), heights=c(4, 1))
+op <- par(mai=rep(0.5, 4))
+matplot(out_r[,infective_index], ylab = "", xlab = "", type = "l", main = "R")
+matplot(out_c[,infective_index], ylab = "", xlab = "", type = "l", main = "C")
+par(mai=c(0,0,0,0))
+plot.new()
+legend(
+    title = "age category",
+    x="center", ncol=n, legend=rownames(contact_matrix), fill = seq_len(n)
+)
+par(op)
+microbenchmark::microbenchmark(
+    R = seir_r(alpha, beta, gamma, contact_matrix, demography, init, time_end),
+    C = seir_c(alpha, beta, gamma, contact_matrix, demography, init, time_end)
+)
+```
