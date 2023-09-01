@@ -12,7 +12,8 @@ Note, at present, the implementations assumes:
 
 - a closed population (no births, deaths or ageing);
 - single (age-dependent) vaccination;
-- no other time dependent parameters or interventions.
+- cumulative contact reduction interventions;
+- no other time dependent parameters.
 
 ``` r
 library(seir)
@@ -32,33 +33,38 @@ demography <- contact_data$demography$population
 n <- nrow(contact_matrix)
 
 # initial conditions
+init_i <- 1e-4
 init <- matrix(
-    c(S = 0.999999, E = 0, I = 0.000001, R = 0),
+    c(S = 1-init_i, E = 0, I = init_i, R = 0),
     nrow = n,
     ncol = 4L,
     byrow = TRUE
 )
 
 # epi parameters
-alpha <- 1/3
-beta <- 1.5/7
-gamma <- 1/7
+infectious_period <- 5
+preinfectious_period <- 1.5
+r0 <- 1.3
+
+alpha <- 1 / preinfectious_period
+beta <- r0 / infectious_period
+gamma <- 1 / infectious_period
 
 # time stuff
 time_end <- 600
 increment <- 1
 
-# vaccination
-vac_start <- c(0, 200, 0)
-vac_end <- c(0, 300, 0)
-nu <- c(0, 0.1, 0)
+is <- c(60,80)
+ie <- c(240,140)
+ii <- cbind(c(0.3,0.01,0.01), c(0.01,0.3,0.01))
 
 # R implementation
 out_r <- seir_r(
     alpha, beta, gamma,
     contact_matrix, demography,
-    init, time_end, 
-    vac_start, vac_end, nu
+    init, time_end,
+    intervention_start_times = c(60,80), intervention_end_times = c(240,140),
+    intervention = cbind(c(0.3,0.01,0.01), c(0.01,0.3,0.01))
 )
 
 # C implementation
@@ -66,15 +72,17 @@ out_c <- seir_c(
     alpha, beta, gamma,
     contact_matrix, demography,
     init, time_end,
-    vac_start, vac_end, nu
+    intervention_start_times = c(60,80), intervention_end_times = c(240,140),
+    intervention = cbind(c(0.3,0.01,0.01), c(0.01,0.3,0.01))
 )
 
 # compare outputs
-recovered_index <- (3*n + 2):(4*n + 1)
+s_index <- (0*n + 2):(1*n + 1)
 layout(matrix(c(1,2,3,3), ncol=2, byrow=TRUE), heights=c(4, 1))
 op <- par(mai=rep(0.5, 4))
-matplot(out_r[, recovered_index], ylab = "", xlab = "", type = "l", main = "R ODE")
-matplot(out_c[, recovered_index], ylab = "", xlab = "", type = "l", main = "C ODE")
+
+matplot(out_r[1:600, s_index] - out_r[2:601, s_index], ylab = "", xlab = "", type = "l", main = "R ODE")
+matplot(out_c[1:600, s_index] - out_c[2:601, s_index], ylab = "", xlab = "", type = "l", main = "C ODE")
 par(mai=c(0,0,0,0))
 plot.new()
 legend(
@@ -93,17 +101,19 @@ microbenchmark::microbenchmark(
         alpha, beta, gamma,
         contact_matrix, demography,
         init, time_end,
-        vac_start, vac_end, nu
+        intervention_start_times = c(60,80), intervention_end_times = c(240,140),
+        intervention = cbind(c(0.3,0.01,0.01), c(0.01,0.3,0.01))
     ),
     C = seir_c(
         alpha, beta, gamma,
         contact_matrix, demography,
         init, time_end,
-        vac_start, vac_end, nu
+        intervention_start_times = c(60,80), intervention_end_times = c(240,140),
+        intervention = cbind(c(0.3,0.01,0.01), c(0.01,0.3,0.01))
     )
 )
 #> Unit: microseconds
-#>  expr       min         lq      mean    median        uq      max neval cld
-#>     R 13734.652 14114.6810 15279.602 14281.810 15853.426 27796.40   100  a 
-#>     C   795.317   902.4215  1042.418   976.403  1069.089  2979.69   100   b
+#>  expr       min       lq      mean    median        uq       max neval cld
+#>     R 22044.896 22980.14 23903.176 23255.611 24957.828 30075.917   100  a 
+#>     C   930.805   992.98  1102.562  1084.883  1212.781  1553.091   100   b
 ```
