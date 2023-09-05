@@ -1,6 +1,13 @@
 #include <stdlib.h> // for NULL
+
+#ifndef R_R_H
 # include <R.h>
+#endif
+
+#ifndef R_EXT_DYNLOAD_H_
 # include <R_ext/Rdynload.h>
+#endif
+
 #include <Rinternals.h>
 
 extern void initmod(void (* odeparms)(int *, double *));
